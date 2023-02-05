@@ -17,7 +17,7 @@ void setup() {
     Serial.begin(9600);
 
     // get a new FlowMeter instance for an uncalibrated flow sensor on pin 2
-    Meter = new FlowMeter(digitalPinToInterrupt(26), UncalibratedSensor, MeterISR, RISING);
+    Meter = new FlowMeter(digitalPinToInterrupt(PB3), UncalibratedSensor, MeterISR, RISING);
 }
 
 void loop() {

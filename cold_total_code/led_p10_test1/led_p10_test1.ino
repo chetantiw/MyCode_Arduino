@@ -23,13 +23,7 @@ void setup() {
    // dmd.selectFont(FONT);
   dmd.begin();
 
-  // Circle with a line at a tangent to it
-//  dmd.drawCircle(24,8,5);
-//  dmd.drawLine(14,9,28,15);
-//
-//  // Outline box containing a filled box
-//  dmd.drawBox(6,10,11,15);
-//  dmd.drawFilledBox(8,12,9,13);
+ Serial.begin(9600);
   dmd.drawString(0,4,"MUTECH");
   delay(1000);
   dmd.clearScreen();
@@ -39,9 +33,17 @@ int n = 123;
 
 // the loop routine runs over and over again forever:
 void loop() {
-//  dmd.drawString(0,0,String(n));
-//  n = n + 1;
-//  delay(1000);
+ if (Serial.available()) {
+    // wait a bit for the entire message to arrive
+    delay(100);
+    // clear the screen
+    lcd.clear();
+    // read all the available characters
+    while (Serial.available() > 0) {
+      // display each character to the LCD
+      char a=Serial.read();
+    }
+  }
 
   dmd.drawString(5,0,"CH:1");
   delay(1000);
