@@ -68,7 +68,7 @@ void sendCallback(int32_t status)
   if (status == 0) {
     Serial.println("Successfully sent");
   } else {
-    Serial.println("Sending failed");
+    //Serial.println("Sending failed");
   }
 }
 
@@ -82,9 +82,9 @@ void setup()
   pinMode(SSerialTxControl,OUTPUT);
   Serial.println("RAKwireless LoRaWan Multi I/O");
   Serial.println("------------------------------------------------------");
-  digitalWrite(DCH1,HIGH);
-  digitalWrite(DCH2,HIGH);
-  digitalWrite(DCH3,HIGH);
+  digitalWrite(DCH1,LOW);
+  digitalWrite(DCH2,LOW);
+  digitalWrite(DCH3,LOW);
   // OTAA Device EUI MSB first
   uint8_t node_device_eui[8] = OTAA_DEVEUI;
   // OTAA Application EUI MSB first
@@ -127,6 +127,7 @@ void setup()
 
   /** Wait for Join success */
   while (api.lorawan.njs.get() == 0) {
+    
     Serial.print("Wait for LoRaWAN join...");
     api.lorawan.join();
     delay(10000);
@@ -141,10 +142,10 @@ void setup()
     Serial.printf("LoRaWan OTAA - set retry times is incorrect! \r\n");
     return;
   }
-  if (!api.lorawan.cfm.set(1)) {
-    Serial.printf("LoRaWan OTAA - set confirm mode is incorrect! \r\n");
-    return;
-  }
+//  if (!api.lorawan.cfm.set(1)) {
+//    Serial.printf("LoRaWan OTAA - set confirm mode is incorrect! \r\n");
+//    return;
+//  }
   api.lorawan.dr.set(4);
   /** Check LoRaWan Status*/
   Serial.printf("Duty cycle is %s\r\n", api.lorawan.dcs.get()? "ON" : "OFF"); // Check Duty Cycle status
