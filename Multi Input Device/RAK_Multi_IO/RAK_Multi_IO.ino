@@ -18,9 +18,10 @@
 
  *************************************/
 #define OTAA_BAND     (RAK_REGION_US915)
-#define OTAA_DEVEUI   {0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x89}
+#define OTAA_DEVEUI   {0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x71}
 #define OTAA_APPEUI   {0x0E, 0x0D, 0x0D, 0x01, 0x0E, 0x01, 0x02, 0x0E}
-#define OTAA_APPKEY   {0x2B, 0x7E, 0x15, 0x16, 0x28, 0xAE, 0xD2, 0xA6, 0xAB, 0xF7, 0x15, 0x88, 0x09, 0xCF, 0x4F, 0x3F}
+#define OTAA_APPKEY   {0x2B, 0x7E, 0x15, 0x16, 0x28, 0xAE, 0xD2, 0xA6, 0xAB, 0xF7, 0x15, 0x88, 0x09, 0xCF, 0x4F, 0x71}
+                  //     2b    7e    15    16    28    ae    d2    a6    ab    f7    15    88    09    cf    4f    6f
 
 /** Packet buffer for sending */
 //uint8_t collected_data[64] = { 0 };
@@ -32,12 +33,18 @@ String message = "";
 #define SSerialTxControl PA1
 #define RS485Transmit HIGH
 #define RS485Receive LOW
+
 #define ACH1 PB3
 #define ACH2 PB2
 #define ACH3 PA10
+
 #define DCH1 PB5
 #define DCH2 PA0
 #define DCH3 PB12
+
+//uint8_t DCH1 = 0xFF;
+//uint8_t DCH2 = 0xFF;
+//uint8_t DCH3 = 0xFF;
 
 
 byte buffer[15];
@@ -76,15 +83,13 @@ void setup()
 {
   Serial.begin(115200, RAK_AT_MODE);
   Serial1.begin(9600);
-  pinMode(DCH1,INPUT);
-  pinMode(DCH2,INPUT);
-  pinMode(DCH3,INPUT);
+  pinMode(DCH1,INPUT_PULLUP);
+  pinMode(DCH2,INPUT_PULLUP);
+  pinMode(DCH3,INPUT_PULLUP);
   pinMode(SSerialTxControl,OUTPUT);
   Serial.println("RAKwireless LoRaWan Multi I/O");
   Serial.println("------------------------------------------------------");
-  digitalWrite(DCH1,LOW);
-  digitalWrite(DCH2,LOW);
-  digitalWrite(DCH3,LOW);
+ 
   // OTAA Device EUI MSB first
   uint8_t node_device_eui[8] = OTAA_DEVEUI;
   // OTAA Application EUI MSB first

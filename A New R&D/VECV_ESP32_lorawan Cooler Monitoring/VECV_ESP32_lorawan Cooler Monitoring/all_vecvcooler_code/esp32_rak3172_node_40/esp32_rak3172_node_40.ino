@@ -22,6 +22,8 @@
 #define motor_swAdd 80
 #define flag_Add 90  //p1
 
+char appkey[] = "AT+APPKEY=262F7100AF3288DDE938293837F87469\r\n";
+
 EnergyMonitor emon1; 
 FlowMeter *Meter;
 
@@ -55,6 +57,10 @@ long start_time;
 int recv_flag = 0; 
 int time_Tosend = 2;
 int time_Tosend_error = 0;
+int motor_sw_status = 0;
+float trip_current= 0;
+float trip_flow=0;
+float trip_temperature = 0;
 
 static char recv_buf[512];
 static bool is_exist = false;
@@ -117,7 +123,7 @@ static void recv_prase(char *p_msg)
    int stInd = rec.indexOf("7b");
    int endInd = rec.indexOf("7d");
    String dataFiltered = rec.substring(stInd,endInd+3);
-   //Serial.println(dataFiltered);
+   Serial.println(dataFiltered);
    int len = dataFiltered.length();
    byte byteArray[128] = {0};
    dataFiltered.toCharArray(data,len);
@@ -138,12 +144,12 @@ static void recv_prase(char *p_msg)
  // Serial.println("stringData write in EEPROM is Successful"); 
   // Create a JSON document of specified capacity <100> and load the byteArray to it
   StaticJsonDocument<100> doc;
+  Serial.println(temp);
   deserializeJson(doc, temp);
   // Print the received JSON message by serializing it
    serializeJson(doc, Serial);
   Serial.println();
-
- 
+  
    if(!doc.containsKey("mxC"))
    {
      Serial.println("setCH is NULL");
@@ -238,11 +244,13 @@ static void recv_prase(char *p_msg)
      if(motor_sw==0)
      {
        digitalWrite(relay,LOW);
+       motor_sw_status = 0;
        Serial.println("motor switched off from the server command");
      }
      else if(motor_sw==1)
      {
        digitalWrite(relay,HIGH);
+       motor_sw_status = 1;
        Serial.println("motor switched on from the server command");
        flag=0;
        digitalWrite(red_led,LOW);
@@ -254,8 +262,10 @@ static void recv_prase(char *p_msg)
        sens_count3=0;
        sens_count4=0;
        time_Tosend_error = 0;
-       time_Tosend = 0;;
-       
+       time_Tosend = 0;
+       trip_current = 0;
+       trip_flow = 0;
+       trip_temperature = 0;       
      }
 
       EEPROM.writeString(motor_swAdd, String(motor_sw));
@@ -295,9 +305,10 @@ void init_lora()
       at_send_check_response("OK", 1000, "AT+DEVEUI=?\r\n");
       at_send_check_response("OK", 1000, "AT+NWM=1\r\n");
       at_send_check_response("OK", 1000, "AT+NJM=1\r\n");
-      at_send_check_response("OK", 1000, "AT+CLASS=A\r\n");
+      at_send_check_response("OK", 1000, "AT+CLASS=C\r\n");
       at_send_check_response("OK", 1000, "AT+BAND=3\r\n");
-      at_send_check_response("OK", 1000, "AT+APPKEY=c63c1440bedaa8e26f55ab7aee202664\r\n");
+      at_send_check_response("OK", 1000, "AT+DR=4\r\n");
+      at_send_check_response("OK", 1000, appkey);
       delay(200);
       is_join = true;
      
@@ -321,7 +332,11 @@ void send_telematry()
  json["C"] = String(current_sens);
  json["F"] = String(flow);
  json["A"] = String(flag);
- char charArray[64];
+ json["S"] = String(motor_sw_status);
+ json["TC"] = String(trip_current);
+ json["TF"] = String(trip_flow);
+ json["TT"] = String(trip_temperature);
+ char charArray[128];
  int len = serializeJson(json, charArray);
  char buildBuffer[2] = {0};
  char compositionBuffer[len*2+1] = {0};  // this will hold a string we build
@@ -340,10 +355,14 @@ void send_telematry()
  do{
      br++;
      ret = at_send_check_response("+EVT:SEND_CONFIRMED_OK", 10000, cmd);
+     
      if (strstr(recv_buf,"+EVT:RX_1"))
      {
         recv_prase(recv_buf);
      }
+
+     
+     
      if(br>10)
      {break;}
    }while(ret==0);
@@ -353,7 +372,6 @@ void send_telematry()
 
 int read_sensors()
 {
-    
     Vout=Vin*((float)(analogRead(temp_probe))/4096.0); // calc for ntc
     Rout=(Rt*Vout/(Vin-Vout));
     TempK=(beta/log(Rout/Rinf)); // calc for temperature
@@ -377,6 +395,8 @@ int read_sensors()
     flow=Meter->getCurrentFlowrate();
     Serial.println("flow: " + String(flow) + " l/min, " + String(Meter->getTotalVolume())+ " l total.");
      
+  if(motor_sw==1)
+  {
     if(current_sens > setCH && flag == 0)
     {
        sens_count4++;
@@ -386,6 +406,7 @@ int read_sensors()
            flag = 1;
            sens_count4 = 0;
            digitalWrite(red_led,HIGH);
+           trip_current = current_sens;
        }
             
             
@@ -400,10 +421,10 @@ int read_sensors()
               flag = 2;
               sens_count3 = 0;
               digitalWrite(red_led,HIGH);
-        
-          }
-          
-            
+              trip_current = current_sens;   
+              trip_flow = flow;   
+              trip_temperature = TempC;                
+          }                     
      }
      if(flow <= setFL && flag == 0)
      {
@@ -415,10 +436,10 @@ int read_sensors()
              flag = 4;
              sens_count2 = 0; 
              digitalWrite(blue_led,HIGH);
-               
-          }
-            
-            
+             trip_current = current_sens;   
+             trip_flow = flow;   
+             trip_temperature = TempC;                     
+          }            
       }
       if(TempC > setTH && flag == 0)  
       {
@@ -429,18 +450,20 @@ int read_sensors()
               flag = 3;
               sens_count1 = 0;
               digitalWrite(yellow_led,HIGH);
-       
+              trip_current = current_sens;
+              trip_flow = flow;
+              trip_temperature = TempC;
            }
-           
-           
       }
       if(motor_sw == 1 && flag > 0)
       {
          digitalWrite(relay,LOW);
+         motor_sw_status = 0;
          Serial.print("motor shuting down, alarm value: ");
          Serial.println(flag);
         
       }
+  }
   return(flag);
 }
 
@@ -471,7 +494,7 @@ void init_hardware()
     pinMode(blue_led, OUTPUT);
     pinMode(white_led, OUTPUT);
    
-
+   
      
     digitalWrite(red_led,HIGH);
     delay(1000);
@@ -494,37 +517,29 @@ void loading_memory()
    
     setCH = EEPROM.readString(setCHAdd).toFloat();
     delay(200);
-    if(setCH==0)
-    setCH = 10;
     setCL = EEPROM.readString(setCLAdd).toFloat();
     delay(200);
     setTH = EEPROM.readString(setTHAdd).toFloat();
     delay(200);
-    if(setTH==0)
-    setTH = 50;
     setFL = EEPROM.readString(setFLAdd).toFloat();
     delay(200);
     tcwt = EEPROM.readString(tcwtAdd).toFloat();
     delay(200);
-    if(tcwt==0)
-    tcwt = 30;
     ccwt = EEPROM.readString(ccwtAdd).toFloat();
     delay(200);
-    if(ccwt==0)
-    ccwt = 20;
     fcwt = EEPROM.readString(fcwtAdd).toFloat();
     delay(200);
-    if(fcwt==0)
-    fcwt = 60;
     motor_sw = EEPROM.readString(motor_swAdd).toFloat();
     delay(200);
     if(motor_sw==1  )
     {
        digitalWrite(relay,HIGH);
+        motor_sw_status = 1;
     }
     else
     {
       digitalWrite(relay,LOW);
+       motor_sw_status = 0;
        
     }
 
@@ -556,7 +571,7 @@ void setup(void)
 
 void loop(void)
 {
-    int flag = read_sensors();
+     int flag = read_sensors();
     if (is_exist)
     {
       int ret = 0;
@@ -567,9 +582,7 @@ void loop(void)
         if (ret)
         {
             is_join = false; 
-            digitalWrite(white_led,HIGH);
-         
-           
+            digitalWrite(white_led,HIGH);                    
         }
         else
         {
@@ -593,14 +606,14 @@ void loop(void)
             {
                 send_telematry();
                 send_count = 0;
-                time_Tosend_error = 40;
+                time_Tosend_error = 4;
             }
            }
            else
            {
             send_telematry();
             send_count = 0;
-            time_Tosend = 180;
+            time_Tosend = 4;
            }
            
         }
@@ -613,8 +626,14 @@ void loop(void)
       if((at_send_check_response("AT+NJS=0", 1000, "AT+NJS=?\r\n")))
       {
          is_join = true;
+         
          Serial.println("device disconnected");
       }
+      if( strstr(recv_buf,"+EVT:RX_C"))
+       {
+          Serial.print("Receiving..");
+            recv_prase(recv_buf);
+         }
 
       Serial.print("Loop time: ");
       Serial.println(millis()-start_time);

@@ -98,8 +98,8 @@ void loop()
 //        Serial.print(F("°C "));
 //        Serial.print(hif);
 //        Serial.println(F("°F"));
-
-                int CO2; 
+        
+        int CO2; 
 
         /* note: getCO2() default is command "CO2 Unlimited". This returns the correct CO2 reading even 
         if below background CO2 levels or above range (useful to validate sensor). You can use the 

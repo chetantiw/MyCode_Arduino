@@ -32,7 +32,7 @@ void IRAM_ATTR triggerScan()
 {
 dmd.scanDisplayBySPI();
 }
-#define SSerialTxControl 26 //5
+#define SSerialTxControl 16 //26 //5
 #define RS485Transmit HIGH
 #define RS485Receive LOW
 
